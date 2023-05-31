@@ -1,0 +1,144 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Chat Room</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        #chat-log {
+            height: 70vh;
+            overflow-y: auto;
+            margin-bottom: 2rem;
+        }
+    </style>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+        }
+
+        .card {
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+            transition: 0.3s;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+{% include "includes/navbar.html" %}
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-8">
+                <div class="card mb-3">
+                <div class="card-header">
+                    Chat admin
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ chat.admin }}</h5>
+                </div>
+            </div>
+                <h2 class="mt-3">Participants</h2>
+            {% for participant in participants %}
+                <div class="card mt-2">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ participant.username }}</h5>
+                        {% if chat.admin == user %}
+                            <!-- only show these buttons for admin -->
+                            <form method="post" action="{% url 'manage_participant' chat.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ participant.id }}">
+                                <input type="hidden" name="action" value="add">
+                                <input type="submit" value="Add" class="btn btn-primary">
+                            </form>
+                            <form method="post" action="{% url 'manage_participant' chat.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ participant.id }}">
+                                <input type="hidden" name="action" value="remove">
+                                <input type="submit" value="Remove" class="btn btn-danger">
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+
+                </li>
+            {% empty %}
+            <li>No participants.</li>
+
+            {% endfor %}
+                <div id="chat-log" class="border mt-5 p-3">
+                    <!-- Chat messages will go here -->
+                </div>
+                <div class="input-group">
+                    <input id="chat-message-input" type="text" class="form-control">
+                    <div class="input-group-append">
+                        <button id="chat-message-submit" class="btn btn-primary">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+
+let chatId = {{ chat_id }}
+
+// Notice the backticks (`) around the URL
+fetch(`/messages/${chatId}/`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(messages => {
+        let chatLog = document.querySelector('#chat-log');
+        messages.reverse().forEach(message => {
+            let messageElement = document.createElement('p');
+            messageElement.textContent = `${message.username}: ${message.content}`;
+            chatLog.appendChild(messageElement);
+        });
+    })
+    .catch(e => {
+        console.error('Error fetching messages:', e);
+    });
+
+const chatSocket = new WebSocket(
+    'ws://'
+    + window.location.host
+    + '/ws/chat/'
+    + {{ chat_id }} + '/'
+);
+
+chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    document.querySelector('#chat-log').value += (data.message + '\n');
+};
+
+chatSocket.onclose = function(e) {
+    console.error('Chat socket closed unexpectedly');
+};
+
+document.querySelector('#chat-message-input').focus();
+document.querySelector('#chat-message-input').onkeyup = function(e) {
+    if (e.keyCode === 13) {  // enter, return
+        document.querySelector('#chat-message-submit').click();
+    }
+};
+
+document.querySelector('#chat-message-submit').onclick = function(e) {
+    const messageInputDom = document.querySelector('#chat-message-input');
+    const message = messageInputDom.value;
+    chatSocket.send(JSON.stringify({
+        'message': message,
+        'chat_id': {{ chat_id }} // this is a variable you should set depending on the current chat
+    }));
+    messageInputDom.value = '';
+};
+</script>
+
+</html>
