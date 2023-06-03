@@ -1,6 +1,7 @@
 import asyncio
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from django.contrib.auth.models import User
 from kafka import KafkaProducer
 from .models import Message, Chat
 from kafka import KafkaConsumer
@@ -25,8 +26,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def create_message(self, username, message, chat_id):
+        user = User.objects.get(username=username)
         chat = Chat.objects.get(id=chat_id)
-        Message.objects.create(username=username, content=message, chat=chat)
+        Message.objects.create(user=user, content=message, chat=chat)
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
@@ -38,7 +40,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.producer.send('chat_messages', value=message.encode('utf-8'))
 
         await self.send(text_data=json.dumps({
-            'message': message
+            'message': message,
+            'user__username': self.scope['user'].username
         }))
 
     async def connect(self):
@@ -54,12 +57,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # start reading messages from Kafka in the background
         self.read_messages_task = asyncio.ensure_future(self.read_messages())
 
+
     async def read_messages(self):
         try:
             for message in self.consumer:
                 # decode the message and send it to all connected clients
                 await self.send(text_data=json.dumps({
-                    'message': message.value.decode('utf-8')
+                    'message': message.value.decode('utf-8'),
+                    'user__username': self.scope['user'].username,
                 }))
         except Exception as e:
             print("Error in read_messages: ", e)

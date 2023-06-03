@@ -55,7 +55,9 @@ def logout_view(request):
     logout(request)
     return redirect('login_view')
 
+from django.contrib.auth.decorators import login_required
 
+@login_required
 def chat_view(request, pk):
     chat = get_object_or_404(Chat, pk=pk)
     participants = chat.participants.all()
@@ -66,13 +68,14 @@ def chat_view(request, pk):
 
 def messages(request):
     messages = Message.objects.order_by('-timestamp').all()[:50]
-    messages = list(messages.values('username', 'content', 'timestamp'))
+    messages = list(messages.values('user__username', 'content', 'timestamp'))
     return JsonResponse(messages, safe=False)
 
 
 def chat_messages(request, chat_id):
     messages = Message.objects.filter(chat_id=chat_id).order_by('-timestamp').all()[:50]
-    messages = list(messages.values('username', 'content', 'timestamp'))
+    messages = list(messages.values('user__username', 'content', 'timestamp'))
+
     return JsonResponse(messages, safe=False)
 
 

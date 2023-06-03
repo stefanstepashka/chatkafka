@@ -38,7 +38,7 @@
                     Chat admin
                 </div>
                 <div class="card-body">
-                    <h5 class="card-title">{{ chat.admin }}</h5>
+
                 </div>
             </div>
                 <h2 class="mt-3">Participants</h2>
@@ -99,7 +99,7 @@ fetch(`/messages/${chatId}/`)
         let chatLog = document.querySelector('#chat-log');
         messages.reverse().forEach(message => {
             let messageElement = document.createElement('p');
-            messageElement.textContent = `${message.username}: ${message.content}`;
+            messageElement.textContent = `${message.user__username}: ${message.content}`;
             chatLog.appendChild(messageElement);
         });
     })
@@ -116,9 +116,10 @@ const chatSocket = new WebSocket(
 
 chatSocket.onmessage = function(e) {
     const data = JSON.parse(e.data);
-    document.querySelector('#chat-log').value += (data.message + '\n');
+    let messageElement = document.createElement('p');
+    messageElement.textContent = `${data.user__username}: ${data.message}`;
+    document.querySelector('#chat-log').appendChild(messageElement);
 };
-
 chatSocket.onclose = function(e) {
     console.error('Chat socket closed unexpectedly');
 };

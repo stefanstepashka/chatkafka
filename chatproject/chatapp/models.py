@@ -17,7 +17,7 @@ class Chat(models.Model):
             self.participants.add(self.admin)
 
 class Message(models.Model):
-    username = models.CharField(max_length=255)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, null=True)
